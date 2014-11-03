@@ -1,23 +1,26 @@
 package com.nirima.jenkins.plugins.docker;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
-import com.nirima.docker.client.model.Container;
 import hudson.Extension;
 import hudson.model.Describable;
-import hudson.model.Descriptor;
 import hudson.model.ManagementLink;
 import hudson.model.Saveable;
+import hudson.model.Descriptor;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
 import jenkins.model.Jenkins;
-import org.apache.http.Consts;
+
 import org.kohsuke.stapler.StaplerProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
+import com.github.dockerjava.api.model.Container;
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 
 
 
@@ -98,12 +101,12 @@ public class DockerManagement extends ManagementLink implements StaplerProxy, De
             }
 
             public String getName() {
-                return cloud.getDisplayName();
+                return this.cloud.getDisplayName();
             }
 
             public String getActiveHosts() {
                 try {
-                    List<Container> containers = cloud.connect().containers().finder().list();
+                    List<Container> containers = this.cloud.connect().listContainersCmd().exec();
                     return "(" + containers.size() + ")";
                 } catch(Exception ex) {
                     return "Error";

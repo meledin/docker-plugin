@@ -1,12 +1,13 @@
 package com.nirima.jenkins.plugins.docker.builder;
 
-import com.google.common.base.Strings;
-import com.nirima.docker.client.DockerClient;
-import com.nirima.jenkins.plugins.docker.DockerCloud;
-import com.nirima.jenkins.plugins.docker.DockerSlave;
 import hudson.model.AbstractBuild;
 import hudson.model.Node;
 import jenkins.model.Jenkins;
+
+import com.github.dockerjava.api.DockerClient;
+import com.google.common.base.Strings;
+import com.nirima.jenkins.plugins.docker.DockerCloud;
+import com.nirima.jenkins.plugins.docker.DockerSlave;
 
 /**
  * Created by magnayn on 30/01/2014.
@@ -19,7 +20,7 @@ public abstract class DockerBuilderControlCloudOption extends DockerBuilderContr
     }
     
     public String getCloudName() {
-        return cloudName;
+        return this.cloudName;
     }
 
     protected DockerCloud getCloud(AbstractBuild<?, ?> build) {
@@ -31,8 +32,8 @@ public abstract class DockerBuilderControlCloudOption extends DockerBuilderContr
             cloud = dockerSlave.getCloud();
         }
 
-        if( !Strings.isNullOrEmpty(cloudName) ) {
-            cloud = (DockerCloud) Jenkins.getInstance().getCloud(cloudName);
+        if( !Strings.isNullOrEmpty(this.cloudName) ) {
+            cloud = (DockerCloud) Jenkins.getInstance().getCloud(this.cloudName);
         }
 
         if( cloud == null ) {
@@ -43,7 +44,7 @@ public abstract class DockerBuilderControlCloudOption extends DockerBuilderContr
     }
 
     protected DockerClient getClient(AbstractBuild<?, ?> build) {
-        DockerCloud cloud = getCloud(build);
+        DockerCloud cloud = this.getCloud(build);
 
         return cloud.connect();
     }

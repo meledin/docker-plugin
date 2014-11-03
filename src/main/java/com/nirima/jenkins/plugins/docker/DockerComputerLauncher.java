@@ -1,20 +1,19 @@
 package com.nirima.jenkins.plugins.docker;
 
 
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.google.common.base.Preconditions;
-import com.nirima.docker.client.model.ContainerInspectResponse;
-import com.nirima.jenkins.plugins.docker.utils.RetryingComputerLauncher;
 import hudson.plugins.sshslaves.SSHLauncher;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.DelegatingComputerLauncher;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
+import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.google.common.base.Preconditions;
+import com.nirima.jenkins.plugins.docker.utils.RetryingComputerLauncher;
 
 
 /**
@@ -25,21 +24,21 @@ public class DockerComputerLauncher extends DelegatingComputerLauncher {
 
     private static final Logger LOGGER = Logger.getLogger(DockerComputerLauncher.class.getName());
 
-    public DockerComputerLauncher(DockerTemplate template, ContainerInspectResponse containerInspectResponse) {
+    public DockerComputerLauncher(DockerTemplate template, InspectContainerResponse containerInspectResponse) {
         super(makeLauncher(template, containerInspectResponse));
     }
 
-    private static ComputerLauncher makeLauncher(DockerTemplate template, ContainerInspectResponse containerInspectResponse) {
+    private static ComputerLauncher makeLauncher(DockerTemplate template, InspectContainerResponse containerInspectResponse) {
         SSHLauncher sshLauncher = getSSHLauncher(containerInspectResponse, template);
         return new RetryingComputerLauncher(sshLauncher);
     }
 
-    private static SSHLauncher getSSHLauncher(ContainerInspectResponse detail, DockerTemplate template)   {
+    private static SSHLauncher getSSHLauncher(InspectContainerResponse detail, DockerTemplate template)   {
         Preconditions.checkNotNull(template);
         Preconditions.checkNotNull(detail);
 
         try {
-            int port = Integer.parseInt(detail.getNetworkSettings().ports.getAllPorts().get("22").getHostPort());
+            int port = detail.getNetworkSettings().getPorts().getBindings().get("22").getHostPort();
 
             URL hostUrl = new URL(template.getParent().serverUrl);
             String host = hostUrl.getHost();

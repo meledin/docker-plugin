@@ -1,14 +1,14 @@
 package com.nirima.jenkins.plugins.docker.utils;
 
-import com.nirima.docker.client.DockerException;
 import hudson.model.TaskListener;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.DelegatingComputerLauncher;
 import hudson.slaves.SlaveComputer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class RetryingComputerLauncher extends DelegatingComputerLauncher {
@@ -31,11 +31,11 @@ public class RetryingComputerLauncher extends DelegatingComputerLauncher {
 
     @Override
     public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
-        if (hasTried) {
+        if (this.hasTried) {
             log.info("Launch failed, pausing before retry.");
-            Thread.sleep(pause);
+            Thread.sleep(this.pause);
         }
         super.launch(computer, listener);
-        hasTried = true;
+        this.hasTried = true;
     }
 }

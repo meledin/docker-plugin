@@ -1,38 +1,47 @@
 package com.nirima.jenkins.plugins.docker;
 
+import hudson.Extension;
+import hudson.Util;
+import hudson.model.Describable;
+import hudson.model.ItemGroup;
+import hudson.model.Descriptor;
+import hudson.model.Label;
+import hudson.model.Node;
+import hudson.model.labels.LabelAtom;
+import hudson.plugins.sshslaves.SSHLauncher;
+import hudson.security.ACL;
+import hudson.slaves.NodeProperty;
+import hudson.slaves.ComputerLauncher;
+import hudson.slaves.RetentionStrategy;
+import hudson.util.StreamTaskListener;
+import hudson.util.ListBoxModel;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import jenkins.model.Jenkins;
+
+import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
+import org.kohsuke.stapler.AncestorInPath;
+import org.kohsuke.stapler.DataBoundConstructor;
+
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHAuthenticator;
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserListBoxModel;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.DockerException;
+import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.model.Ports;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
-
-import com.nirima.docker.client.DockerException;
-import com.nirima.docker.client.DockerClient;
-import com.nirima.docker.client.model.*;
 import com.trilead.ssh2.Connection;
-import hudson.Extension;
-import hudson.Util;
-import hudson.model.*;
-import hudson.model.labels.LabelAtom;
-import hudson.plugins.sshslaves.SSHLauncher;
-import hudson.security.ACL;
-import hudson.slaves.ComputerLauncher;
-import hudson.slaves.NodeProperty;
-import hudson.slaves.RetentionStrategy;
-import hudson.util.ListBoxModel;
-import hudson.util.StreamTaskListener;
-import jenkins.model.Jenkins;
-import org.kohsuke.stapler.AncestorInPath;
-import org.kohsuke.stapler.DataBoundConstructor;
-
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
 
 
 public class DockerTemplate extends DockerTemplateBase implements Describable<DockerTemplate> {
@@ -123,7 +132,7 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
             this.instanceCap = Integer.parseInt(instanceCapStr);
         }
 
-        readResolve();
+        this.readResolve();
     }
 
     private String[] splitAndFilterEmpty(String s) {
@@ -138,35 +147,35 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
     }
 
     public String getInstanceCapStr() {
-        if (instanceCap==Integer.MAX_VALUE) {
+        if (this.instanceCap==Integer.MAX_VALUE) {
             return "";
         } else {
-            return String.valueOf(instanceCap);
+            return String.valueOf(this.instanceCap);
         }
     }
 
     public String getDnsString() {
-        return Joiner.on(" ").join(dnsHosts);
+        return Joiner.on(" ").join(this.dnsHosts);
     }
 
     public String getVolumesString() {
-	return Joiner.on(" ").join(volumes);
+	return Joiner.on(" ").join(this.volumes);
     }
 
     public String getVolumesFrom() {
-        return volumesFrom;
+        return this.volumesFrom;
     }
 
     public String getRemoteFsMapping() {
-        return remoteFsMapping;
+        return this.remoteFsMapping;
     }
 
     public Descriptor<DockerTemplate> getDescriptor() {
-        return Jenkins.getInstance().getDescriptor(getClass());
+        return Jenkins.getInstance().getDescriptor(this.getClass());
     }
 
     public Set<LabelAtom> getLabelSet(){
-        return labelSet;
+        return this.labelSet;
     }
 
     /**
@@ -175,26 +184,26 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
     protected Object readResolve() {
         super.readResolve();
 
-        labelSet = Label.parse(labelString);
+        this.labelSet = Label.parse(this.labelString);
         return this;
     }
 
     public String getDisplayName() {
-        return "Image of " + image;
+        return "Image of " + this.image;
     }
 
     public DockerCloud getParent() {
-        return parent;
+        return this.parent;
     }
 
     private int idleTerminationMinutes() {
-        if (idleTerminationMinutes == null || idleTerminationMinutes.trim().isEmpty()) {
+        if (this.idleTerminationMinutes == null || this.idleTerminationMinutes.trim().isEmpty()) {
             return 0;
         } else {
             try {
-                return Integer.parseInt(idleTerminationMinutes);
+                return Integer.parseInt(this.idleTerminationMinutes);
             } catch (NumberFormatException nfe) {
-                LOGGER.log(Level.INFO, "Malformed idleTermination value: {0}", idleTerminationMinutes);
+                LOGGER.log(Level.INFO, "Malformed idleTermination value: {0}", this.idleTerminationMinutes);
                 return 30;
             }
         }
@@ -204,24 +213,24 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
             PrintStream logger = listener.getLogger();
 
 
-        logger.println("Launching " + image );
+        logger.println("Launching " + this.image );
 
         int numExecutors = 1;
         Node.Mode mode = Node.Mode.NORMAL;
 
-        RetentionStrategy retentionStrategy = new OnceRetentionStrategy(idleTerminationMinutes());
+        RetentionStrategy retentionStrategy = new OnceRetentionStrategy(this.idleTerminationMinutes());
 
         List<? extends NodeProperty<?>> nodeProperties = new ArrayList();
 
-        ContainerInspectResponse containerInspectResponse = provisionNew();
+        InspectContainerResponse containerInspectResponse = this.provisionNew();
         String containerId = containerInspectResponse.getId();
 
         ComputerLauncher launcher = new DockerComputerLauncher(this, containerInspectResponse);
 
         // Build a description up:
-        String nodeDescription = "Docker Node [" + image + " on ";
+        String nodeDescription = "Docker Node [" + this.image + " on ";
         try {
-            nodeDescription += getParent().getDisplayName();
+            nodeDescription += this.getParent().getDisplayName();
         } catch(Exception ex)
         {
             nodeDescription += "???";
@@ -232,7 +241,7 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
 
         try
         {
-            slaveName = slaveName + "@" + getParent().getDisplayName();
+            slaveName = slaveName + "@" + this.getParent().getDisplayName();
         }
         catch(Exception ex) {
             LOGGER.warning("Error fetching name of cloud");
@@ -241,14 +250,14 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
         return new DockerSlave(this, containerId,
                 slaveName,
                 nodeDescription,
-                remoteFs, numExecutors, mode, labelString,
+                this.remoteFs, numExecutors, mode, this.labelString,
                 launcher, retentionStrategy, nodeProperties);
 
     }
 
-    public ContainerInspectResponse provisionNew() throws DockerException {
-        DockerClient dockerClient = getParent().connect();
-        return provisionNew(dockerClient);
+    public InspectContainerResponse provisionNew() throws DockerException {
+        DockerClient dockerClient = this.getParent().connect();
+        return this.provisionNew(dockerClient);
     }
 
     public int getNumExecutors() {
@@ -272,9 +281,9 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
      * Provide a sensible default - templates are for slaves, and you're mostly going
      * to want port 22 exposed.
      */
-    protected Iterable<PortMapping> getPortMappings() {
+    protected Ports getPortMappings() {
 
-        if(Strings.isNullOrEmpty(bindPorts) ) {
+        if(Strings.isNullOrEmpty(this.bindPorts) ) {
             return PortMapping.parse("0.0.0.0::22");
         }
         return super.getPortMappings();
@@ -299,8 +308,8 @@ public class DockerTemplate extends DockerTemplateBase implements Describable<Do
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .add("image", image)
-                .add("parent", parent)
+                .add("image", this.image)
+                .add("parent", this.parent)
                 .toString();
     }
 }

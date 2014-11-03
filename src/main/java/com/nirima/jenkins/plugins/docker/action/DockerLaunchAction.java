@@ -1,12 +1,12 @@
 package com.nirima.jenkins.plugins.docker.action;
 
-import com.nirima.docker.client.DockerClient;
 import hudson.model.Action;
-import hudson.model.Describable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.github.dockerjava.api.DockerClient;
 
 /**
  * Action to record launching of a slave.
@@ -25,20 +25,20 @@ public class DockerLaunchAction implements Action, Serializable, Cloneable{
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (o == null || this.getClass() != o.getClass()) return false;
 
             Item item = (Item) o;
 
-            if (!client.equals(item.client)) return false;
-            if (!id.equals(item.id)) return false;
+            if (!this.client.equals(item.client)) return false;
+            if (!this.id.equals(item.id)) return false;
 
             return true;
         }
 
         @Override
         public int hashCode() {
-            int result = client.hashCode();
-            result = 31 * result + id.hashCode();
+            int result = this.client.hashCode();
+            result = 31 * result + this.id.hashCode();
             return result;
         }
     }
@@ -58,14 +58,14 @@ public class DockerLaunchAction implements Action, Serializable, Cloneable{
     }
 
     public void started(DockerClient client, String containerName) {
-        running.add( new Item(client, containerName) );
+        this.running.add( new Item(client, containerName) );
     }
 
     public void stopped(DockerClient client, String containerName) {
-        running.remove( new Item(client, containerName) );
+        this.running.remove( new Item(client, containerName) );
     }
 
     public Iterable<Item> getRunning() {
-        return running;
+        return this.running;
     }
 }

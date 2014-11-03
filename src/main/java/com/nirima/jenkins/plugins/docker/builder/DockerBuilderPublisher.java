@@ -1,30 +1,22 @@
 package com.nirima.jenkins.plugins.docker.builder;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
-import com.nirima.docker.client.DockerClient;
-import com.nirima.docker.client.DockerException;
-import com.nirima.docker.client.command.BuildCommandResponse;
-import com.nirima.docker.client.command.PushCommandResponse;
-import com.nirima.docker.client.model.Identifier;
-import com.nirima.jenkins.plugins.docker.DockerSlave;
-import com.nirima.jenkins.plugins.docker.action.DockerBuildImageAction;
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.Launcher;
+import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
 import hudson.model.Node;
-import hudson.remoting.VirtualChannel;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
+
+import java.io.IOException;
+import java.io.Serializable;
+
 import org.jenkinsci.plugins.tokenmacro.TokenMacro;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
+import com.github.dockerjava.api.DockerClient;
+import com.nirima.jenkins.plugins.docker.DockerSlave;
 
 /**
  * Builder extension to build / publish an image from a Dockerfile.
@@ -49,7 +41,7 @@ public class DockerBuilderPublisher extends Builder implements Serializable {
     @Override
     public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) throws IOException, InterruptedException {
 
-        listener.getLogger().println("Docker Build");
+        /*listener.getLogger().println("Docker Build");
 
         FilePath fpChild = new FilePath(build.getWorkspace(), dockerFileDirectory);
 
@@ -132,7 +124,7 @@ public class DockerBuilderPublisher extends Builder implements Serializable {
                 else
                     delete--;
             }
-        }
+        }*/
 
 
 
@@ -169,11 +161,11 @@ public class DockerBuilderPublisher extends Builder implements Serializable {
 
     private String getTag(AbstractBuild build, Launcher launcher, BuildListener listener) {
         try {
-            return TokenMacro.expandAll(build, listener, tag);
+            return TokenMacro.expandAll(build, listener, this.tag);
         }catch(Exception ex) {
-            listener.getLogger().println("Couldn't macro expand tag " + tag);
+            listener.getLogger().println("Couldn't macro expand tag " + this.tag);
         }
-        return tag;
+        return this.tag;
 
     }
 

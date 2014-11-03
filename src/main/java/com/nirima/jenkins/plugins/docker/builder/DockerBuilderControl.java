@@ -1,18 +1,21 @@
 package com.nirima.jenkins.plugins.docker.builder;
 
-import com.nirima.docker.client.DockerException;
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.BuildListener;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
-import jenkins.model.Jenkins;
-import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.logging.Logger;
+
+import org.kohsuke.stapler.DataBoundConstructor;
+
+import com.github.dockerjava.api.DockerException;
 
 /**
  * Created by magnayn on 29/01/2014.
@@ -55,7 +58,7 @@ public class DockerBuilderControl extends Builder implements Serializable {
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
 
         try {
-            option.execute(build);
+            this.option.execute(build);
         } catch (DockerException e) {
             throw new RuntimeException(e);
         }

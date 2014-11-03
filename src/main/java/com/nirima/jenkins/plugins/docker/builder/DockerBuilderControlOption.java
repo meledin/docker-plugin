@@ -1,16 +1,18 @@
 package com.nirima.jenkins.plugins.docker.builder;
 
-import com.nirima.docker.client.DockerException;
-import com.nirima.jenkins.plugins.docker.action.DockerLaunchAction;
-import hudson.model.AbstractBuild;
 import hudson.model.Describable;
+import hudson.model.AbstractBuild;
 import hudson.model.Descriptor;
-import jenkins.model.Jenkins;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.logging.Logger;
+
+import jenkins.model.Jenkins;
+
+import com.github.dockerjava.api.DockerException;
+import com.nirima.jenkins.plugins.docker.action.DockerLaunchAction;
 
 /**
  * Created by magnayn on 30/01/2014.
@@ -33,6 +35,6 @@ public abstract class DockerBuilderControlOption implements Describable<DockerBu
     }
 
     public Descriptor<DockerBuilderControlOption> getDescriptor() {
-        return Jenkins.getInstance().getDescriptorOrDie(getClass());
+        return Jenkins.getInstance().getDescriptorOrDie(this.getClass());
     }
 }

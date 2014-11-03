@@ -8,6 +8,10 @@
       <f:textbox />
     </f:entry>
 
+   <f:entry title="${%Docker Version}" field="serverVersion">
+      <f:textbox default="1.1.3"/>
+    </f:entry>
+
     <f:entry title="${%Connection Timeout (seconds)}" field="connectTimeout">
         <f:textbox default="5"/>
     </f:entry>
@@ -16,7 +20,7 @@
         <f:textbox default="15"/>
     </f:entry>
 
-    <f:validateButton title="${%Test Connection}" progress="${%Testing...}" method="testConnection" with="serverUrl" />
+    <f:validateButton title="${%Test Connection}" progress="${%Testing...}" method="testConnection" with="serverUrl,serverVersion" />
 
     <f:entry title="${%Container Cap}" field="containerCapStr">
         <f:textbox />

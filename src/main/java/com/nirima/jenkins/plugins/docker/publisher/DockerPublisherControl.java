@@ -1,19 +1,23 @@
 package com.nirima.jenkins.plugins.docker.publisher;
 
-import com.nirima.docker.client.DockerException;
-import com.nirima.jenkins.plugins.docker.builder.DockerBuilderControlOptionStopAll;
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.BuildListener;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
-import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.logging.Logger;
+
+import org.kohsuke.stapler.DataBoundConstructor;
+
+import com.github.dockerjava.api.DockerException;
+import com.nirima.jenkins.plugins.docker.builder.DockerBuilderControlOptionStopAll;
 
 /**
  * Created by magnayn on 30/01/2014.

@@ -1,34 +1,21 @@
 package com.nirima.jenkins.plugins.docker.builder;
 
-import com.cloudbees.jenkins.plugins.sshcredentials.SSHAuthenticator;
-import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserListBoxModel;
-import com.cloudbees.plugins.credentials.CredentialsProvider;
-import com.cloudbees.plugins.credentials.common.StandardUsernameCredentials;
-import com.google.common.base.Strings;
-import com.nirima.docker.client.DockerClient;
-import com.nirima.docker.client.DockerException;
-import com.nirima.docker.client.model.Identifier;
-import com.nirima.jenkins.plugins.docker.DockerSimpleTemplate;
-import com.nirima.jenkins.plugins.docker.DockerTemplateBase;
-import com.trilead.ssh2.Connection;
 import hudson.Extension;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Describable;
-import hudson.model.ItemGroup;
 import hudson.model.TaskListener;
-import hudson.plugins.sshslaves.SSHLauncher;
-import hudson.security.ACL;
-import hudson.tasks.BuildStepDescriptor;
-import hudson.tasks.Builder;
-import hudson.util.ListBoxModel;
-import org.apache.commons.io.IOUtils;
-import org.jenkinsci.plugins.tokenmacro.TokenMacro;
-import org.kohsuke.stapler.AncestorInPath;
-import org.kohsuke.stapler.DataBoundConstructor;
+import hudson.model.AbstractBuild;
 
 import java.io.IOException;
 import java.io.InputStream;
+
+import org.apache.commons.io.IOUtils;
+import org.jenkinsci.plugins.tokenmacro.TokenMacro;
+import org.kohsuke.stapler.DataBoundConstructor;
+
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.DockerException;
+import com.google.common.base.Strings;
+import com.nirima.jenkins.plugins.docker.DockerSimpleTemplate;
+import com.nirima.jenkins.plugins.docker.DockerTemplateBase;
 
 /**
  * Created by magnayn on 30/01/2014.
@@ -73,20 +60,18 @@ public class DockerBuilderControlOptionRun extends DockerBuilderControlCloudOpti
 
     @Override
     public void execute(AbstractBuild<?, ?> build) throws DockerException, IOException {
-        DockerClient client = getClient(build);
+        DockerClient client = this.getClient(build);
 
         // Expand some token macros
 
-        String xImage    = expand(build, image);
-        String xCommand  = expand(build, dockerCommand);
-        String xHostname = expand(build, hostname);
+        String xImage    = this.expand(build, this.image);
+        String xCommand  = this.expand(build, this.dockerCommand);
+        String xHostname = this.expand(build, this.hostname);
 
 
         LOGGER.info("Pulling image " + xImage);
-
-        InputStream result = client.createPullCommand()
-                .image( Identifier.fromCompoundString(xImage))
-                .execute();
+        
+        InputStream result = client.pullImageCmd(xImage).exec();
 
         String strResult = IOUtils.toString(result);
         LOGGER.info("Pull result = " + strResult);
@@ -94,19 +79,19 @@ public class DockerBuilderControlOptionRun extends DockerBuilderControlCloudOpti
         LOGGER.info("Starting container for image " + xImage );
 
         DockerTemplateBase template = new DockerSimpleTemplate(xImage,
-                dnsString, xCommand,
-                volumesString, volumesFrom, lxcConfString, xHostname, bindPorts, bindAllPorts, privileged);
+                this.dnsString, xCommand,
+                this.volumesString, this.volumesFrom, this.lxcConfString, xHostname, this.bindPorts, this.bindAllPorts, this.privileged);
 
         String containerId = template.provisionNew(client).getId();
 
         LOGGER.info("Started container " + containerId);
-        getLaunchAction(build).started(client, containerId);
+        this.getLaunchAction(build).started(client, containerId);
     }
 
     private String expand(AbstractBuild<?, ?> build, String text) {
         try {
             if(!Strings.isNullOrEmpty(text)  )
-                text = TokenMacro.expandAll((AbstractBuild) build, TaskListener.NULL, text);
+                text = TokenMacro.expandAll(build, TaskListener.NULL, text);
 
         } catch (Exception e) {
             e.printStackTrace();

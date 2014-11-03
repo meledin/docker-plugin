@@ -1,25 +1,29 @@
 package com.nirima.jenkins.plugins.docker;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import com.nirima.docker.client.DockerException;
-import com.nirima.docker.client.DockerClient;
-import com.nirima.jenkins.plugins.docker.action.DockerBuildAction;
-
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.TaskListener;
+import hudson.model.AbstractBuild;
+import hudson.model.Descriptor;
+import hudson.model.Run;
 import hudson.slaves.AbstractCloudSlave;
-import hudson.slaves.ComputerLauncher;
 import hudson.slaves.NodeProperty;
+import hudson.slaves.ComputerLauncher;
 import hudson.slaves.RetentionStrategy;
-import org.jenkinsci.plugins.tokenmacro.TokenMacro;
-import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.jenkinsci.plugins.tokenmacro.TokenMacro;
+import org.kohsuke.stapler.DataBoundConstructor;
+
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.DockerException;
+import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import com.nirima.jenkins.plugins.docker.action.DockerBuildAction;
 
 
 public class DockerSlave extends AbstractCloudSlave {
@@ -42,10 +46,10 @@ public class DockerSlave extends AbstractCloudSlave {
     }
 
     public DockerCloud getCloud() {
-        DockerCloud theCloud = dockerTemplate.getParent();
+        DockerCloud theCloud = this.dockerTemplate.getParent();
 
         if( theCloud == null ) {
-            throw new RuntimeException("Docker template " + dockerTemplate + " has no parent ");
+            throw new RuntimeException("Docker template " + this.dockerTemplate + " has no parent ");
         }
 
         return theCloud;
@@ -53,7 +57,7 @@ public class DockerSlave extends AbstractCloudSlave {
 
     @Override
     public String getDisplayName() {
-        return name;
+        return this.name;
     }
 
     public void setRun(Run run) {
@@ -67,8 +71,8 @@ public class DockerSlave extends AbstractCloudSlave {
 
     public boolean containerExistsInCloud() {
         try {
-            DockerClient client = getClient();
-            client.container(containerId).inspect();
+            DockerClient client = this.getClient();
+            client.inspectContainerCmd(this.containerId).exec();
             return true;
         } catch(Exception ex) {
             return false;
@@ -80,33 +84,32 @@ public class DockerSlave extends AbstractCloudSlave {
 
 
         try {
-            toComputer().disconnect(null);
+            this.toComputer().disconnect(null);
 
             try {
-                DockerClient client = getClient();
-                client.container(containerId).stop();
+                DockerClient client = this.getClient();
             } catch(Exception ex) {
-                LOGGER.log(Level.SEVERE, "Failed to stop instance " + containerId + " for slave " + name + " due to exception", ex);
+                LOGGER.log(Level.SEVERE, "Failed to stop instance " + this.containerId + " for slave " + this.name + " due to exception", ex);
             }
 
             // If the run was OK, then do any tagging here
-            if( theRun != null ) {
+            if( this.theRun != null ) {
                 try {
-                    slaveShutdown(listener);
+                    this.slaveShutdown(listener);
                 } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "Failure to slaveShutdown instance " + containerId+ " for slave " + name , e);
+                    LOGGER.log(Level.SEVERE, "Failure to slaveShutdown instance " + this.containerId+ " for slave " + this.name , e);
                 }
             }
 
             try {
-                DockerClient client = getClient();
-                client.container(containerId).remove();
+                DockerClient client = this.getClient();
+                client.removeContainerCmd(this.containerId).exec();
             } catch(Exception ex) {
-                LOGGER.log(Level.SEVERE, "Failed to remove instance " + containerId + " for slave " + name + " due to exception",ex);
+                LOGGER.log(Level.SEVERE, "Failed to remove instance " + this.containerId + " for slave " + this.name + " due to exception",ex);
             }
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failure to terminate instance " + containerId + " for slave " + name ,e);
+            LOGGER.log(Level.SEVERE, "Failure to terminate instance " + this.containerId + " for slave " + this.name ,e);
         }
     }
 
@@ -114,58 +117,46 @@ public class DockerSlave extends AbstractCloudSlave {
 
         // The slave has stopped. Should we commit / tag / push ?
 
-        if(!getJobProperty().tagOnCompletion) {
-            addJenkinsAction(null);
+        if(!this.getJobProperty().tagOnCompletion) {
+            this.addJenkinsAction(null);
             return;
         }
 
-        DockerClient client = getClient();
+        DockerClient client = this.getClient();
 
 
          // Commit
-        String tag_image = client.container(containerId).createCommitCommand()
-                    .repo(theRun.getParent().getDisplayName())
-                    .tag(theRun.getDisplayName())
-                    .author("Jenkins")
-                    .execute();
-
+        
+        String imgTag = client.commitCmd(this.containerId).withRepository(this.theRun.getParent().getDisplayName()).withTag(this.theRun.getDisplayName()).withAuthor("jenkins").exec();
+        
         // Tag it with the jenkins name
-        addJenkinsAction(tag_image);
+        this.addJenkinsAction(imgTag);
 
         // SHould we add additional tags?
-        try
+        /*try
         {
-            String tagToken = getAdditionalTag(listener);
+            String tagToken = this.getAdditionalTag(listener);
 
             if( !Strings.isNullOrEmpty(tagToken) ) {
                 client.image(tag_image).tag(tagToken, false);
-                addJenkinsAction(tagToken);
+                this.addJenkinsAction(tagToken);
 
-                if( getJobProperty().pushOnSuccess ) {
+                if( this.getJobProperty().pushOnSuccess ) {
                     client.image(tagToken).push(null);
                 }
             }
         }
         catch(Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not add additional tags");
-        }
+        }*/
 
-        if( getJobProperty().cleanImages ) {
+        if( this.getJobProperty().cleanImages ) {
 
             // For some reason, docker delete doesn't delete all tagged
             // versions, despite force = true.
             // So, do it multiple times (protect against infinite looping).
 
-            int delete = 100;
-            while(delete != 0 ) {
-                int count = client.image(tag_image).removeCommand()
-                                   .force(true)
-                                   .execute().size();
-                if( count == 0 )
-                    delete = 0;
-                else
-                    delete--;
-            }
+            client.removeImageCmd(imgTag).withForce().exec();
         }
 
     }
@@ -174,12 +165,12 @@ public class DockerSlave extends AbstractCloudSlave {
         // Do a macro expansion on the addJenkinsAction token
 
         // Job property
-        String tagToken = getJobProperty().additionalTag;
+        String tagToken = this.getJobProperty().additionalTag;
 
         // Do any macro expansions
         try {
             if(!Strings.isNullOrEmpty(tagToken)  )
-                tagToken = TokenMacro.expandAll((AbstractBuild) theRun, listener, tagToken);
+                tagToken = TokenMacro.expandAll((AbstractBuild) this.theRun, listener, tagToken);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -192,12 +183,12 @@ public class DockerSlave extends AbstractCloudSlave {
      * @throws IOException
      */
     private void addJenkinsAction(String tag_image) throws IOException {
-        theRun.addAction( new DockerBuildAction(getCloud().serverUrl, containerId, tag_image, dockerTemplate.remoteFsMapping) );
-        theRun.save();
+        this.theRun.addAction( new DockerBuildAction(this.getCloud().serverUrl, this.containerId, tag_image, this.dockerTemplate.remoteFsMapping) );
+        this.theRun.save();
     }
 
     public DockerClient getClient() {
-        return getCloud().connect();
+        return this.getCloud().connect();
     }
 
     /**
@@ -210,16 +201,16 @@ public class DockerSlave extends AbstractCloudSlave {
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .add("name", name)
-                .add("containerId", containerId)
-                .add("template", dockerTemplate)
+                .add("name", this.name)
+                .add("containerId", this.containerId)
+                .add("template", this.dockerTemplate)
                 .toString();
     }
 
     private DockerJobProperty getJobProperty() {
 
         try {
-            DockerJobProperty p = (DockerJobProperty) ((AbstractBuild) theRun).getProject().getProperty(DockerJobProperty.class);
+            DockerJobProperty p = (DockerJobProperty) ((AbstractBuild) this.theRun).getProject().getProperty(DockerJobProperty.class);
 
             if (p != null)
                 return p;
